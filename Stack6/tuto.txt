@@ -1,0 +1,81 @@
+﻿Stack6 by k0ch // 23 junio 2016
+
+Entorno: Windows 7 32bits
+
+En este caso analicé el stack6.idb con IDA PRO 6.8. 
+
+.text:00401087 cmp     [ebp+arg_0], 2 <--- arg_0 es el "int argc" de C/C++
+.text:0040108B jz      short loc_401095
+
+Para pasar a la sección de código que nos interesa, debemos pasarle al ejecutable al menos 2 argumentos. El primero siempre corresponderá al nombre del ejecutable.
+
+.text:00401095
+.text:00401095 loc_401095:
+.text:00401095 lea     eax, [ebp+var_4]
+.text:00401098 mov     dword_403020, eax
+.text:0040109D lea     ecx, [ebp+var_8]
+.text:004010A0 push    ecx
+.text:004010A1 lea     edx, [ebp+var_4]
+.text:004010A4 push    edx
+.text:004010A5 lea     eax, [ebp+var_3C]
+.text:004010A8 push    eax
+.text:004010A9 push    offset aBuf08xCookie08 ; "buf: %08x cookie: %08x cookie2: %08x\n"
+.text:004010AE call    sub_401170
+.text:004010B3 add     esp, 10h
+.text:004010B6 push    3Ch             ; Count
+.text:004010B8 mov     ecx, 4
+.text:004010BD imul    edx, ecx, 0
+.text:004010C0 mov     eax, [ebp+arg_4] <--- cadena del primer argumento a eax
+.text:004010C3 mov     ecx, [eax+edx]
+.text:004010C6 push    ecx             ; Source
+.text:004010C7 lea     edx, [ebp+Dest]
+.text:004010CD push    edx             ; Dest
+.text:004010CE call    ds:strncpy
+.text:004010D4 add     esp, 0Ch
+.text:004010D7 mov     eax, 4
+.text:004010DC shl     eax, 0
+.text:004010DF mov     ecx, [ebp+arg_4]
+.text:004010E2 mov     edx, [ecx+eax]
+.text:004010E5 movsx   eax, byte ptr [edx]
+.text:004010E8 add     eax, 5 <--- se suma 5 al primer byte de la cadena, es por esto mismo que debemos usar \x40 al principio de la cadena y así lograr tener \x45 en la siguiente línea
+.text:004010EB cmp     eax, 45h
+.text:004010EE jz      short loc_4010F8
+
+.text:004010F8 loc_4010F8:             ; Count
+.text:004010F8 push    0A0h
+.text:004010FD mov     ecx, 4
+.text:00401102 shl     ecx, 0
+.text:00401105 mov     edx, [ebp+arg_4]
+.text:00401108 mov     eax, [edx+ecx]
+.text:0040110B push    eax             ; Source
+.text:0040110C lea     ecx, [ebp+var_3C] 
+.text:0040110F push    ecx             ; Dest
+.text:00401110 call    ds:strncpy <--- Acá podemos observar que el segundo argumento se copia a var_3C (buf). A través de esta podemos pisar el valor de var_4, la cual será necesaria para pasar la comparación de la línea 0040113C
+.text:00401116 add     esp, 0Ch
+.text:00401119 mov     edx, [ebp+var_8]
+.text:0040111C push    edx
+.text:0040111D mov     eax, dword_403020
+.text:00401122 push    eax
+.text:00401123 call    sub_401010
+.text:00401128 add     esp, 8
+.text:0040112B mov     ecx, [ebp+var_4]
+.text:0040112E push    ecx
+.text:0040112F push    offset aCookie08x ; "cookie %08x \n"
+.text:00401134 call    sub_401170
+.text:00401139 add     esp, 8
+.text:0040113C cmp     [ebp+var_4], 350D0A58h <-- comparación para ganar! :)
+.text:00401143 jnz     short loc_
+
+El script resultante es este:
+
+//---------------------
+
+import subprocess
+
+args = 'stack6.exe ' + '\x40' + 55 * 'x' + '\x58\x0A\x0D\x35'
+subprocess.call(args)
+
+//---------------------
+
+SEE YOU SPACE COWBOY :)
+..k0ch
